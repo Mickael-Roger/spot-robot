@@ -38,9 +38,8 @@ class SpotGyro():
         if self.mqueue.current_messages >= MAX_MSG:
             self.mqueue.receive()
 
-        self.mqueue.send(str({'front': self.angleFront, 'side': self.angleSide, 'time': time()}))
+        self.mqueue.send('{"front":"' + str(self.angleFront) + '","side":"' +  str(self.angleSide) + '","time":"' + str(time()) + '"}')
 
-        print('sent')
 
 
 
