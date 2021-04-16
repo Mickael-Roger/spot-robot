@@ -22,10 +22,11 @@ spot_bodybackward=0
 spot_bodyleft=0
 spot_bodyright=0
 spot_motiontime=0.
+spot_motionlock = threading.Lock()
 
 
 def spotgyro():
-    global gyro_front, gyro_side, gyro_time, gyro_time
+    global gyro_front, gyro_side, gyro_time, gyro_lock
 
     mqgyro = MessageQueue("/gyro")
 
@@ -40,24 +41,58 @@ def spotgyro():
             gyro_lock.release()
         except:
             pass
+
+
+def spotmotion_reset():
+    global spot_forward, spot_backward, spot_left, spot_right,spot_bodyforward, spot_bodybackward, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
+    spot_forward=0
+    spot_backward=0
+    spot_left=0
+    spot_right=0
+    spot_bodyforward=0
+    spot_bodybackward=0
+    spot_bodyleft=0
+    spot_bodyright=0
+
 
 
 def spotmotion():
-    global time
-
-    mqgyro = MessageQueue("/gyro")
+    global spot_forward, spot_backward, spot_left, spot_right,spot_bodyforward, spot_bodybackward, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
+    
+    mqmotion = MessageQueue("/spotmotion")
 
     while all_run:
         try:
-            msg = mqgyro.receive()
+            msg = mqmotion.receive()
             msgvalues=json.loads(msg[0])
-            gyro_lock.acquire()
-            gyro_front=float(msgvalues['front'])
-            gyro_side=float(msgvalues['side'])
-            gyro_time=float(msgvalues['time'])
-            gyro_lock.release()
+            spot_motionlock.acquire()
+
+            if msgvalues['action'] == 'stop':
+                spotmotion_reset()
+            elif msgvalues['action'] == 'forward':
+                spotmotion_reset()
+                spot_forward=1
+            elif msgvalues['action'] == 'backward':
+                spotmotion_reset()
+                spot_backward=1
+            elif msgvalues['action'] == 'left':
+                spotmotion_reset()
+                spot_left=1
+            elif msgvalues['action'] == 'right':
+                spotmotion_reset()
+                spot_right=1
+            elif msgvalues['action'] == 'wakeup':
+                spotmotion_reset()
+                print('wakeup')
+            elif msgvalues['action'] == 'laydown':
+                spotmotion_reset()
+                print('laydown')
+            spot_motionlock.release()
+
         except:
-            pass
+            spot_motionlock.acquire()
+            spotmotion_reset()
+            spot_motionlock.release()
 
 
 def signal_handler(sig, frame):
@@ -72,14 +107,26 @@ if __name__ == '__main__':
     gyro_thread.setDaemon(True)
     gyro_thread.start()
 
+    # Create Motion thread
+    spotmotion_thread = threading.Thread(name='spotmotion', target=spotmotion)
+    spotmotion_thread.setDaemon(True)
+    spotmotion_thread.start()
+
+
 
     while all_run:
-        time.sleep(1)
-        gyro_lock.acquire()
-        print("Front: " + str(gyro_front))
-        print("Side : " + str(gyro_side))
-        print("Time : " + str(gyro_time))
-        gyro_lock.release()
+        time.sleep(0.1)
+        spot_motionlock.acquire()
+        if spot_forward==1:
+            print('Forward')
+        if spot_backward==1:
+            print('Backward')
+        if spot_left==1:
+            print('Left')
+        if spot_right==1:
+            print('Right')
+        spot_motionlock.release()
 
 
     gyro_thread.join()
+    potmotion_thread.join()

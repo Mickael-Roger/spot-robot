@@ -39,21 +39,21 @@ class SpotGamepad():
                     code = absevent.event.value
 
                     if code == -1:
-                        self.send_msg('spotmotion', '{"action":"forward","time":"' + str(time() + '"}')
+                        self.send_msg('spotmotion', '{"action":"forward","time":"' + str(time()) + '"}')
                     elif code == 1:
-                        self.send_msg('spotmotion', '{"action":"backward","time":"' + str(time() + '"}')
+                        self.send_msg('spotmotion', '{"action":"backward","time":"' + str(time()) + '"}')
                     else:
-                        self.send_msg('spotmotion', '{"action":"stop","time":"' + str(time() + '"}')
+                        self.send_msg('spotmotion', '{"action":"stop","time":"' + str(time()) + '"}')
 
                 if evdev.ecodes.bytype[absevent.event.type][absevent.event.code] == 'ABS_HAT0X':
                     code = absevent.event.value
 
                     if code == -1:
-                        self.send_msg('spotmotion', '{"action":"left","time":"' + str(time() + '"}')
+                        self.send_msg('spotmotion', '{"action":"left","time":"' + str(time()) + '"}')
                     elif code == 1:
-                        self.send_msg('spotmotion', '{"action":"right","time":"' + str(time() + '"}')
+                        self.send_msg('spotmotion', '{"action":"right","time":"' + str(time()) + '"}')
                     else:
-                        self.send_msg('spotmotion', '{"action":"stop","time":"' + str(time() + '"}')
+                        self.send_msg('spotmotion', '{"action":"stop","time":"' + str(time()) + '"}')
 
 
                 # If body position joystick
@@ -79,12 +79,12 @@ class SpotGamepad():
                 # Laydown
                 if evdev.ecodes.bytype[keyevent.event.type][keyevent.event.code] == laydown_button:
                     if keyevent.event.value == 0:
-                        print('laydown')
+                        self.send_msg('spotmotion', '{"action":"laydown","time":"' + str(time()) + '"}')
 
                 # Wake up
                 if evdev.ecodes.bytype[keyevent.event.type][keyevent.event.code] == wakeup_button:
                     if keyevent.event.value == 0:
-                        print('wakeup')
+                        self.send_msg('spotmotion', '{"action":"wakeup","time":"' + str(time()) + '"}')
 
 
 
