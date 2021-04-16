@@ -17,10 +17,10 @@ spot_forward=0
 spot_backward=0
 spot_left=0
 spot_right=0
-spot_bodyforward=0
-spot_bodybackward=0
 spot_bodyleft=0
 spot_bodyright=0
+spot_bodyfront=0
+spot_bodyback=0
 spot_motiontime=0.
 spot_motionlock = threading.Lock()
 
@@ -44,20 +44,20 @@ def spotgyro():
 
 
 def spotmotion_reset():
-    global spot_forward, spot_backward, spot_left, spot_right,spot_bodyforward, spot_bodybackward, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
+    global spot_forward, spot_backward, spot_left, spot_right,spot_bodyfront, spot_bodyback, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
     spot_forward=0
     spot_backward=0
     spot_left=0
     spot_right=0
-    spot_bodyforward=0
-    spot_bodybackward=0
     spot_bodyleft=0
     spot_bodyright=0
+    spot_bodyfront=0
+    spot_bodyback=0
 
 
 
 def spotmotion():
-    global spot_forward, spot_backward, spot_left, spot_right,spot_bodyforward, spot_bodybackward, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
+    global spot_forward, spot_backward, spot_left, spot_right,spot_bodyfront, spot_bodyback, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
     
     mqmotion = MessageQueue("/spotmotion")
 
@@ -66,6 +66,7 @@ def spotmotion():
             msg = mqmotion.receive()
             msgvalues=json.loads(msg[0])
             spot_motionlock.acquire()
+
 
             if msgvalues['action'] == 'stop':
                 spotmotion_reset()
@@ -81,6 +82,18 @@ def spotmotion():
             elif msgvalues['action'] == 'right':
                 spotmotion_reset()
                 spot_right=1
+            elif msgvalues['action'] == 'bodyleft':
+                spotmotion_reset()
+                spot_bodyleft=1
+            elif msgvalues['action'] == 'bodyright':
+                spotmotion_reset()
+                spot_bodyright=1
+            elif msgvalues['action'] == 'bodyfront':
+                spotmotion_reset()
+                spot_bodyfront=1
+            elif msgvalues['action'] == 'bodyback':
+                spotmotion_reset()
+                spot_bodyback=1
             elif msgvalues['action'] == 'wakeup':
                 spotmotion_reset()
                 print('wakeup')
@@ -125,6 +138,14 @@ if __name__ == '__main__':
             print('Left')
         if spot_right==1:
             print('Right')
+        if spot_bodyright==1:
+            print('Body Right')
+        if spot_bodyleft==1:
+            print('Body Left')
+        if spot_bodyfront==1:
+            print('Body Front')
+        if spot_bodyback==1:
+            print('Body Back')
         spot_motionlock.release()
 
 

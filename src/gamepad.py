@@ -58,10 +58,21 @@ class SpotGamepad():
 
                 # If body position joystick
                 if evdev.ecodes.bytype[absevent.event.type][absevent.event.code] == 'ABS_X':
-                    print('lateral movement: ' + str(absevent.event.value))
+                    if absevent.event.value < 128:
+                        self.send_msg('spotmotion', '{"action":"bodyleft","time":"' + str(time()) + '"}')
+                    elif absevent.event.value > 128:
+                        self.send_msg('spotmotion', '{"action":"bodyright","time":"' + str(time()) + '"}')
+                    else:
+                        self.send_msg('spotmotion', '{"action":"stop","time":"' + str(time()) + '"}')
 
                 if evdev.ecodes.bytype[absevent.event.type][absevent.event.code] == 'ABS_Y':
-                    print('front movement: ' + str(absevent.event.value))
+                    if absevent.event.value < 128:
+                        self.send_msg('spotmotion', '{"action":"bodyfront","time":"' + str(time()) + '"}')
+                    elif absevent.event.value > 128:
+                        self.send_msg('spotmotion', '{"action":"bodyback","time":"' + str(time()) + '"}')
+                    else:
+                        self.send_msg('spotmotion', '{"action":"stop","time":"' + str(time()) + '"}')
+
 
 
                 # If camera position joystick
