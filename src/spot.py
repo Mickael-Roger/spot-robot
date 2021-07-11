@@ -1,4 +1,4 @@
-from posix_ipc import MessageQueue
+from posix_ipc import MessageQueue, BusyError, unlink_message_queue, O_CREX
 import threading
 
 import json
@@ -32,18 +32,21 @@ def spotgyro():
 
     while all_run:
         try:
-            msg = mqgyro.receive()
+            msg = mqgyro.receive(timeout=1)
             msgvalues=json.loads(msg[0])
             gyro_lock.acquire()
             gyro_front=float(msgvalues['front'])
             gyro_side=float(msgvalues['side'])
             gyro_time=float(msgvalues['time'])
             gyro_lock.release()
+        except BusyError: 
+            time.sleep(1)
+            mqgyro = MessageQueue("/gyro")
         except:
             pass
 
 
-def spotmotion_reset():
+def spotgamepad_reset():
     global spot_forward, spot_backward, spot_left, spot_right,spot_bodyfront, spot_bodyback, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
     spot_forward=0
     spot_backward=0
@@ -56,10 +59,10 @@ def spotmotion_reset():
 
 
 
-def spotmotion():
+def spotgamepad():
     global spot_forward, spot_backward, spot_left, spot_right,spot_bodyfront, spot_bodyback, spot_bodyleft, spot_bodyright, spot_motiontime, spot_motionlock
     
-    mqmotion = MessageQueue("/spotmotion")
+    mqmotion = MessageQueue("/spotgamepad")
 
     while all_run:
         try:
@@ -69,42 +72,42 @@ def spotmotion():
 
 
             if msgvalues['action'] == 'stop':
-                spotmotion_reset()
+                spotgamepad_reset()
             elif msgvalues['action'] == 'forward':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_forward=1
             elif msgvalues['action'] == 'backward':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_backward=1
             elif msgvalues['action'] == 'left':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_left=1
             elif msgvalues['action'] == 'right':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_right=1
             elif msgvalues['action'] == 'bodyleft':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_bodyleft=1
             elif msgvalues['action'] == 'bodyright':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_bodyright=1
             elif msgvalues['action'] == 'bodyfront':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_bodyfront=1
             elif msgvalues['action'] == 'bodyback':
-                spotmotion_reset()
+                spotgamepad_reset()
                 spot_bodyback=1
             elif msgvalues['action'] == 'wakeup':
-                spotmotion_reset()
+                spotgamepad_reset()
                 print('wakeup')
             elif msgvalues['action'] == 'laydown':
-                spotmotion_reset()
+                spotgamepad_reset()
                 print('laydown')
             spot_motionlock.release()
 
         except:
             spot_motionlock.acquire()
-            spotmotion_reset()
+            spotgamepad_reset()
             spot_motionlock.release()
 
 
@@ -115,39 +118,58 @@ def signal_handler(sig, frame):
 
 if __name__ == '__main__':
 
+    try:
+        unlink_message_queue("/spotmotion")
+    except:
+        pass
+
+    spotmotion=MessageQueue('/spotmotion', flags=O_CREX, max_messages=5)
+
+
     # Create Gyro thread
     gyro_thread = threading.Thread(name='spotgyro', target=spotgyro)
     gyro_thread.setDaemon(True)
     gyro_thread.start()
 
-    # Create Motion thread
-    spotmotion_thread = threading.Thread(name='spotmotion', target=spotmotion)
-    spotmotion_thread.setDaemon(True)
-    spotmotion_thread.start()
+    # Create Gamedpad thread
+    spotgamepad_thread = threading.Thread(name='spotgamepad', target=spotgamepad)
+    spotgamepad_thread.setDaemon(True)
+    spotgamepad_thread.start()
 
 
 
     while all_run:
         time.sleep(0.1)
         spot_motionlock.acquire()
-        if spot_forward==1:
+        if spot_forward == 0 and spot_backward == 0 and spot_left == 0 and spot_right == 0 and spot_bodyright == 0 and spot_bodyleft == 0 and spot_bodyfront == 0 and spot_bodyback == 0:
+            print('Stop')
+            spotmotion.send('{"action":"stop"}')
+        elif spot_forward==1:
             print('Forward')
-        if spot_backward==1:
+            spotmotion.send('{"action":"forward"}')
+        elif spot_backward==1:
             print('Backward')
-        if spot_left==1:
+            spotmotion.send('{"action":"backward"}')
+        elif spot_left==1:
             print('Left')
-        if spot_right==1:
+            spotmotion.send('{"action":"left"}')
+        elif spot_right==1:
             print('Right')
-        if spot_bodyright==1:
+            spotmotion.send('{"action":"right"}')
+        elif spot_bodyright==1:
             print('Body Right')
-        if spot_bodyleft==1:
+        elif spot_bodyleft==1:
             print('Body Left')
-        if spot_bodyfront==1:
+        elif spot_bodyfront==1:
             print('Body Front')
-        if spot_bodyback==1:
+        elif spot_bodyback==1:
             print('Body Back')
         spot_motionlock.release()
 
+        gyro_lock.acquire()
+        print('Gryo : ' + str(gyro_front) + ' ' + str(gyro_side) + ' ' + str(gyro_time))
+        gyro_lock.release()
+
 
     gyro_thread.join()
-    potmotion_thread.join()
+    spotgamepad_thread.join()

@@ -29,16 +29,20 @@ class SpotGyro():
 
     def get_position(self):
 
-        accelval = self.gyro.get_accel_data()
-        gyroval = self.gyro.get_gyro_data()
+        try:
+            accelval = self.gyro.get_accel_data()
+            gyroval = self.gyro.get_gyro_data()
 
-        self.angleFront=0.80*(self.angleFront+float(gyroval['y'])*0.01/131) + 0.20*atan2(accelval['x'],accelval['z'])*180/3.14159;
-        self.angleSide=0.80*(self.angleSide+float(gyroval['x'])*0.01/131) + 0.20*atan2(accelval['y'],accelval['z'])*180/3.14159;
+            self.angleFront=0.80*(self.angleFront+float(gyroval['y'])*0.01/131) + 0.20*atan2(accelval['x'],accelval['z'])*180/3.14159
+            self.angleSide=0.80*(self.angleSide+float(gyroval['x'])*0.01/131) + 0.20*atan2(accelval['y'],accelval['z'])*180/3.14159
 
-        if self.mqueue.current_messages >= MAX_MSG:
-            self.mqueue.receive()
+            if self.mqueue.current_messages >= MAX_MSG:
+                self.mqueue.receive()
 
-        self.mqueue.send('{"front":"' + str(self.angleFront) + '","side":"' +  str(self.angleSide) + '","time":"' + str(time()) + '"}')
+            self.mqueue.send('{"front":"' + str(self.angleFront) + '","side":"' +  str(self.angleSide) + '","time":"' + str(time()) + '"}')
+        
+        except Exception:
+            pass
 
 
 
