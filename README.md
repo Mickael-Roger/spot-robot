@@ -13,6 +13,10 @@ Add ubuntu user to i2c group
 usermod -a -G i2c ubuntu
 
 
+New:
+python3 spot.py
+
+Old:
 Build and run
 python3 src/gyro.py
 python3 src/spot.py
