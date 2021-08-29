@@ -31,8 +31,8 @@ FRONT_LEFT_FOOT=6
 INPUT_DEVICE="/dev/input/event0"
 
 
-GYRO_CORR_FRONT=2.31
-GYRO_CORR_SIDE=-1
+GYRO_CORR_FRONT=2.16
+GYRO_CORR_SIDE=-1.1
 
 
 all_run=True
@@ -61,34 +61,60 @@ def spotgyro():
 
             sleep(1)
 
-        i=0
-        front_accel=[0] * 5
-        side_accel=[0] * 5
+        tmp_front = 0
+        tmp_side = 0
+
+        for i in range(10):
+            accelval = gyro.get_accel_data()
+            gyroval = gyro.get_gyro_data()
+
+            tmp_front = tmp_front + atan2(accelval['x'],accelval['z'])*180/3.14159
+            tmp_side = tmp_side + atan2(accelval['y'],accelval['z'])*180/3.14159
+
+            sleep(0.1)
+
+        gyro_lock.acquire()
+        gyro_front=tmp_front/10 + GYRO_CORR_FRONT
+        gyro_side=tmp_side/10 + GYRO_CORR_SIDE
+        gyro_time=time()
+
+        print("Initialized: " + str(gyro_front) + " - " + str(gyro_side)) 
+
+        if gyro_lock.locked():
+            gyro_lock.release()
 
         while True:
             try:
                 accelval = gyro.get_accel_data()
-                front_accel[i] = atan2(accelval['x'],accelval['z'])*180/3.14159
-                side_accel[i] = atan2(accelval['y'],accelval['z'])*180/3.14159
+                gyroval = gyro.get_gyro_data()
 
-                if i == 4:
-                    i=0
-                    front_accel_sorted=sorted(front_accel, key=float)
-                    side_accel_sorted=sorted(side_accel, key=float)
-                    gyro_lock.acquire()
-                    gyro_front=round(sum(front_accel_sorted[1:4])/len((front_accel_sorted[1:4])) + GYRO_CORR_FRONT, 2)
-                    gyro_side=round(sum(side_accel_sorted[1:4])/len((side_accel_sorted[1:4])) + GYRO_CORR_SIDE, 2)
-                    gyro_time=time()
-                    if gyro_lock.locked():
-                        gyro_lock.release()
+                gyro_lock.acquire()
 
-                i=i+1
+                dt = time() - gyro_time
+                gyro_time=time()
+
+                front_accel = atan2(accelval['x'],accelval['z'])*180/3.14159
+                side_accel = atan2(accelval['y'],accelval['z'])*180/3.14159
+
+                front_gyro_rate = gyroval['y'] / 131
+                side_gyro_rate = gyroval['x'] / 131
+
+                gyro_front = round((0.90 * (gyro_front - GYRO_CORR_FRONT + front_gyro_rate * dt) + 0.10 * front_accel) + GYRO_CORR_FRONT, 2)
+                gyro_side = round((0.90 * (gyro_side - GYRO_CORR_SIDE + side_gyro_rate * dt) + 0.10 * side_accel) + GYRO_CORR_SIDE, 2)
+                
+
+                #print("RES: " + str(dt) + " - " + str(gyro_front) + " " + str(gyro_side) + " " + str(front_gyro_rate) + " " + str(side_gyro_rate) + " " + str(front_accel) + " " + str(side_accel) )
+
+                if gyro_lock.locked():
+                    gyro_lock.release()
+
 
             except Exception:
                 pass
                 if gyro_lock.locked():
                     gyro_lock.release()
 
+            sleep(0.01)
 
 
 
