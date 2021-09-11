@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import sys
 
 from mpu6050 import mpu6050
-from math import atan2
+from math import atan2, acos, cos, sin, asin, degrees, radians
 
 import evdev
 
@@ -85,13 +85,16 @@ def spotgyro():
 
         while True:
             try:
+                
                 accelval = gyro.get_accel_data()
                 gyroval = gyro.get_gyro_data()
 
+                nowtime = time()
+
                 gyro_lock.acquire()
 
-                dt = time() - gyro_time
-                gyro_time=time()
+                dt = nowtime - gyro_time
+                gyro_time = nowtime
 
                 front_accel = atan2(accelval['x'],accelval['z'])*180/3.14159
                 side_accel = atan2(accelval['y'],accelval['z'])*180/3.14159
@@ -99,8 +102,8 @@ def spotgyro():
                 front_gyro_rate = gyroval['y'] / 131
                 side_gyro_rate = gyroval['x'] / 131
 
-                gyro_front = round((0.90 * (gyro_front - GYRO_CORR_FRONT + front_gyro_rate * dt) + 0.10 * front_accel) + GYRO_CORR_FRONT, 2)
-                gyro_side = round((0.90 * (gyro_side - GYRO_CORR_SIDE + side_gyro_rate * dt) + 0.10 * side_accel) + GYRO_CORR_SIDE, 2)
+                gyro_front = round((0.95 * (gyro_front - GYRO_CORR_FRONT + front_gyro_rate * dt) + 0.05 * front_accel) + GYRO_CORR_FRONT, 2)
+                gyro_side = round((0.95 * (gyro_side - GYRO_CORR_SIDE + side_gyro_rate * dt) + 0.05 * side_accel) + GYRO_CORR_SIDE, 2)
                 
 
                 #print("RES: " + str(dt) + " - " + str(gyro_front) + " " + str(gyro_side) + " " + str(front_gyro_rate) + " " + str(side_gyro_rate) + " " + str(front_accel) + " " + str(side_accel) )
@@ -114,7 +117,7 @@ def spotgyro():
                 if gyro_lock.locked():
                     gyro_lock.release()
 
-            sleep(0.01)
+            sleep(0.005)
 
 
 
@@ -237,7 +240,7 @@ def signal_handler(sig, frame):
 class Spot():
 
     def __init__(self):
-        self.corrections = [3, 0, 3, 0, -7, -3, 4, 0, 5, 0, 7, 0, 0, 0, 0, 0]
+        self.corrections = [3, 0, 3, 0, -7, -3, 4, 0, 5, 3, 7, 0, 0, 0, 0, 0]
         self.positions = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
 
         self.servos = ServoKit(channels=16)
@@ -263,6 +266,34 @@ class Spot():
         self.movepart(FRONT_RIGHT_LEG, 120)
 
 
+    def calcnewpos(self, part, move):
+
+        if part == FRONT_RIGHT_FOOT or part == BACK_RIGHT_FOOT or part == FRONT_LEFT_FOOT or part == BACK_LEFT_FOOT:
+
+            if part == FRONT_RIGHT_FOOT:
+                leg = self.positions[FRONT_RIGHT_LEG]
+            elif part == BACK_RIGHT_FOOT:
+                leg = self.positions[BACK_RIGHT_LEG]
+            elif part == FRONT_LEFT_FOOT:
+                leg = self.positions[FRONT_LEFT_LEG]
+            elif part == BACK_LEFT_FOOT:
+                leg = self.positions[BACK_LEFT_LEG]
+
+            print(self.positions[part]+leg-220)
+            t1 = radians(self.positions[part]+leg-220)
+            print(t1)
+            t2 = sin(t1)
+            print(t2)
+            t3 = asin((t2*13.5+move)/13.5)
+            print(t3)      
+
+            return degrees(t3)
+
+        elif part == BACK_LEFT_LEG or part == FRONT_LEFT_LEG or part == FRONT_RIGHT_LEG or part == BACK_RIGHT_LEG:
+
+            return degrees(acos((cos(radians(self.positions[part]-90))*11+move)/11)) + 90
+
+        return None
 
 
     def movepart(self, part, position):
@@ -272,11 +303,13 @@ class Spot():
         elif position + self.corrections[part] < 0:
             position=0 - self.corrections[part]
 
-        if part == FRONT_RIGHT_FOOT or part == BACK_RIGHT_FOOT or part == BACK_LEFT_LEG or part == FRONT_LEFT_LEG or part == FRONT_LEFT_SHOULDER or part == BACK_RIGHT_SHOULDER:
+        if part == FRONT_LEFT_FOOT or part == BACK_LEFT_FOOT or part == BACK_LEFT_LEG or part == FRONT_LEFT_LEG or part == FRONT_LEFT_SHOULDER or part == BACK_RIGHT_SHOULDER:
             self.positions[part] = position
             self.servos.servo[part].angle = position + self.corrections[part]
         
-        elif part == FRONT_LEFT_FOOT or part == BACK_LEFT_FOOT or part == FRONT_RIGHT_LEG or part == BACK_RIGHT_LEG or part == FRONT_RIGHT_SHOULDER or part == BACK_LEFT_SHOULDER:
+
+
+        elif part == FRONT_RIGHT_FOOT or part == BACK_RIGHT_FOOT or part == FRONT_RIGHT_LEG or part == BACK_RIGHT_LEG or part == FRONT_RIGHT_SHOULDER or part == BACK_LEFT_SHOULDER:
             self.positions[part] = position 
             self.servos.servo[part].angle = 180 - (position + self.corrections[part])
 
@@ -320,10 +353,12 @@ class Spot():
 
             self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG]-round((val[BACK_RIGHT_LEG] - 150)/5))
             self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG]-round((val[BACK_LEFT_LEG] - 150)/5))
-            self.movepart(BACK_RIGHT_FOOT, self.positions[FRONT_RIGHT_LEG]-round((val[FRONT_RIGHT_LEG] - 140)/5))
-            self.movepart(BACK_LEFT_FOOT, self.positions[FRONT_LEFT_LEG]-round((val[FRONT_LEFT_LEG] - 140)/5))
+            self.movepart(BACK_RIGHT_FOOT, self.positions[FRONT_RIGHT_LEG]-round((val[BACK_RIGHT_FOOT] - 140)/5))
+            self.movepart(BACK_LEFT_FOOT, self.positions[FRONT_LEFT_LEG]-round((val[BACK_LEFT_FOOT] - 140)/5))
 
             sleep(0.05)
+
+        print(self.positions)
 
         spot_gamepadmotionlock.acquire()
         spot_gamepadmotion='stop'
@@ -503,31 +538,31 @@ class Spot():
                         self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 1)
 
                     if side > (side_pos + 1):
-                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 1)
-                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 1)
-                        self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] + 1)
-                        self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] + 1)
+                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 0.5)
+                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 0.5)
+                        self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] + 0.5)
+                        self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] + 0.5)
 
-                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 1)
-                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 1)
-                        self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] - 1)
-                        self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] - 1)
+                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 0.5)
+                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 0.5)
+                        self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] - 0.5)
+                        self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] - 0.5)
 
                     if side < (side_pos - 1):
-                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 1)
-                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 1)
-                        self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] - 1)
-                        self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] - 1)
+                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 0.5)
+                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 0.5)
+                        self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] - 0.5)
+                        self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] - 0.5)
 
-                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 1)
-                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 1)
-                        self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] + 1)
-                        self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] + 1)
+                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 0.5)
+                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 0.5)
+                        self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] + 0.5)
+                        self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] + 0.5)
 
                 else:
                     break
 
-                sleep(0.1)
+                sleep(0.05)
 
 
 
@@ -567,6 +602,114 @@ if __name__ == '__main__':
         debug_thread = threading.Thread(name='webServer.serve_forever', target=webServer.serve_forever)
         debug_thread.setDaemon(True)
         debug_thread.start()
+
+#        sleep(5)
+#
+#        spot.wakeup()
+#
+#        sleep(5)
+
+#        print("toto")
+#        lleg = spot.calcnewpos(BACK_LEFT_LEG, 2)
+#        print("toto1")
+#        rleg = spot.calcnewpos(BACK_RIGHT_LEG, 2)
+#        print("toto2")
+#        rfoot = spot.calcnewpos(BACK_RIGHT_FOOT, 2)
+#        print("toto3")
+#        lfoot = spot.calcnewpos(BACK_LEFT_FOOT, 2)
+        spot.movepart(BACK_RIGHT_FOOT, 47)
+        spot.movepart(BACK_LEFT_FOOT, 47)
+        spot.movepart(BACK_LEFT_LEG, 170)
+        spot.movepart(BACK_RIGHT_LEG, 170)
+
+        spot.movepart(FRONT_RIGHT_FOOT, 47)
+        spot.movepart(FRONT_LEFT_FOOT, 47)
+        spot.movepart(FRONT_LEFT_LEG, 170)
+        spot.movepart(FRONT_RIGHT_LEG, 170)
+
+        sleep(10)
+
+
+        spot.movepart(BACK_RIGHT_FOOT, 75)
+        spot.movepart(BACK_LEFT_FOOT, 75)
+        spot.movepart(BACK_LEFT_LEG, 150)
+        spot.movepart(BACK_RIGHT_LEG, 150)
+
+        spot.movepart(FRONT_RIGHT_FOOT, 75)
+        spot.movepart(FRONT_LEFT_FOOT, 75)
+        spot.movepart(FRONT_LEFT_LEG, 150)
+        spot.movepart(FRONT_RIGHT_LEG, 150)
+
+        sleep(10)
+
+
+        spot.movepart(BACK_RIGHT_FOOT, 109)
+        spot.movepart(BACK_LEFT_FOOT, 109)
+        spot.movepart(BACK_LEFT_LEG, 129)
+        spot.movepart(BACK_RIGHT_LEG, 129)
+
+        spot.movepart(FRONT_RIGHT_FOOT, 109)
+        spot.movepart(FRONT_LEFT_FOOT, 109)
+        spot.movepart(FRONT_LEFT_LEG, 129)
+        spot.movepart(FRONT_RIGHT_LEG, 129)
+
+
+
+        sleep(100000)
+        spot.movepart(BACK_RIGHT_FOOT, 133)
+        spot.movepart(BACK_LEFT_FOOT, 133)
+        spot.movepart(FRONT_RIGHT_FOOT, 133)
+        spot.movepart(FRONT_LEFT_FOOT, 133)
+        spot.movepart(FRONT_LEFT_LEG, 169)
+        spot.movepart(FRONT_RIGHT_LEG, 169)
+        spot.movepart(BACK_LEFT_LEG, 169)
+        spot.movepart(BACK_RIGHT_LEG, 169)
+
+        sleep(100)
+
+
+        # Test al-kashi
+        spot.movepart(BACK_RIGHT_FOOT, 133)
+        spot.movepart(BACK_LEFT_FOOT, 133)
+        spot.movepart(BACK_LEFT_LEG, 130)
+        spot.movepart(BACK_RIGHT_LEG, 130)
+        spot.movepart(FRONT_RIGHT_FOOT, 133)
+        spot.movepart(FRONT_LEFT_FOOT, 133)
+        spot.movepart(FRONT_LEFT_LEG, 130)
+        spot.movepart(FRONT_RIGHT_LEG, 130)
+ 
+        sleep(5)
+        spot.movepart(BACK_RIGHT_FOOT, 147)
+        spot.movepart(BACK_LEFT_FOOT, 147)
+        spot.movepart(BACK_LEFT_LEG, 124)
+        spot.movepart(BACK_RIGHT_LEG, 124)
+        spot.movepart(FRONT_RIGHT_FOOT, 147)
+        spot.movepart(FRONT_LEFT_FOOT, 147)
+        spot.movepart(FRONT_LEFT_LEG, 124)
+        spot.movepart(FRONT_RIGHT_LEG, 124)
+ 
+        sleep(5)
+        spot.movepart(BACK_RIGHT_FOOT, 92)
+        spot.movepart(BACK_LEFT_FOOT, 92)
+        spot.movepart(BACK_LEFT_LEG, 144)
+        spot.movepart(BACK_RIGHT_LEG, 144)
+        spot.movepart(FRONT_RIGHT_FOOT, 92)
+        spot.movepart(FRONT_LEFT_FOOT, 92)
+        spot.movepart(FRONT_LEFT_LEG, 144)
+        spot.movepart(FRONT_RIGHT_LEG, 144)
+
+
+
+############################## TODO
+#
+# Add an al-kashi calculation function
+# Create a function that move up/down a full leg of x cm (based on al-kashi calculation)
+# Servo motion asservissement
+# Stabilization use of the new function
+
+
+
+        sleep(60)
 
 
     while all_run:
