@@ -4,13 +4,18 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import sys
 
 from mpu6050 import mpu6050
-from math import atan2, acos, cos, sin, asin, degrees, radians
+from math import atan2, acos, cos, sin, asin, degrees, radians, sqrt
 
 import evdev
 
 from time import sleep, time
 from adafruit_servokit import ServoKit
 
+
+FRONT_LEFT=0
+FRONT_RIGHT=1
+BACK_LEFT=2
+BACK_RIGHT=3
 
 BACK_RIGHT_LEG=14
 BACK_RIGHT_SHOULDER=12
@@ -266,36 +271,6 @@ class Spot():
         self.movepart(FRONT_RIGHT_LEG, 120)
 
 
-    def calcnewpos(self, part, move):
-
-        if part == FRONT_RIGHT_FOOT or part == BACK_RIGHT_FOOT or part == FRONT_LEFT_FOOT or part == BACK_LEFT_FOOT:
-
-            if part == FRONT_RIGHT_FOOT:
-                leg = self.positions[FRONT_RIGHT_LEG]
-            elif part == BACK_RIGHT_FOOT:
-                leg = self.positions[BACK_RIGHT_LEG]
-            elif part == FRONT_LEFT_FOOT:
-                leg = self.positions[FRONT_LEFT_LEG]
-            elif part == BACK_LEFT_FOOT:
-                leg = self.positions[BACK_LEFT_LEG]
-
-            print(self.positions[part]+leg-220)
-            t1 = radians(self.positions[part]+leg-220)
-            print(t1)
-            t2 = sin(t1)
-            print(t2)
-            t3 = asin((t2*13.5+move)/13.5)
-            print(t3)      
-
-            return degrees(t3)
-
-        elif part == BACK_LEFT_LEG or part == FRONT_LEFT_LEG or part == FRONT_RIGHT_LEG or part == BACK_RIGHT_LEG:
-
-            return degrees(acos((cos(radians(self.positions[part]-90))*11+move)/11)) + 90
-
-        return None
-
-
     def movepart(self, part, position):
 
         if position + self.corrections[part] > 180:
@@ -526,38 +501,42 @@ class Spot():
             if (time() - gytime) < 0.1:
                 if abs(front - front_pos) > 1 or abs(side - side_pos) > 1:
                     if front < (front_pos - 1):
-                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 1)
-                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 1)
-                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 1)
-                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 1)
+                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [0.2, 0.2 , 0.2, 0.2])
+                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 1)
+                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 1)
+                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 1)
+                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 1)
 
                     if front > (front_pos + 1):
-                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 1)
-                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 1)
-                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 1)
-                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 1)
+                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [-0.2, -0.2 , -0.2, -0.2])
+                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 1)
+                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 1)
+                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 1)
+                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 1)
 
                     if side > (side_pos + 1):
-                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 0.5)
-                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 0.5)
-                        self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] + 0.5)
-                        self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] + 0.5)
+                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [0.2, 0.2 , -0.2, -0.2])
+                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 0.5)
+                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 0.5)
+                        #self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] + 0.5)
+                        #self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] + 0.5)
 
-                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 0.5)
-                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 0.5)
-                        self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] - 0.5)
-                        self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] - 0.5)
+                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 0.5)
+                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 0.5)
+                        #self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] - 0.5)
+                        #self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] - 0.5)
 
                     if side < (side_pos - 1):
-                        self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 0.5)
-                        self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 0.5)
-                        self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] - 0.5)
-                        self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] - 0.5)
+                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [-0.2, -0.2 , 0.2, 0.2])
+                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 0.5)
+                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 0.5)
+                        #self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] - 0.5)
+                        #self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] - 0.5)
 
-                        self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 0.5)
-                        self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 0.5)
-                        self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] + 0.5)
-                        self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] + 0.5)
+                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 0.5)
+                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 0.5)
+                        #self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] + 0.5)
+                        #self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] + 0.5)
 
                 else:
                     break
@@ -565,6 +544,47 @@ class Spot():
                 sleep(0.05)
 
 
+
+    def moveleg(self, legs=[], motions=[]):
+
+        while all( v != 0 for v in motions):
+
+            for idx, oneleg in enumerate(legs):
+
+                if oneleg == FRONT_LEFT:
+                    foot = FRONT_LEFT_FOOT
+                    leg = FRONT_LEFT_LEG
+                elif oneleg == FRONT_RIGHT:
+                    foot = FRONT_RIGHT_FOOT
+                    leg = FRONT_RIGHT_LEG
+                elif oneleg == BACK_LEFT:
+                    foot = BACK_LEFT_FOOT
+                    leg = BACK_LEFT_LEG
+                elif oneleg == BACK_RIGHT:
+                    foot = BACK_RIGHT_FOOT
+                    leg = BACK_RIGHT_LEG
+
+                actual_high = sqrt(303.25 - (2 * 148.5 * cos(radians(self.positions[foot]))))
+
+                if abs(motions[idx]) > 0.2:
+
+                    if motions[idx] > 0:
+                        new_high = actual_high + 0.2
+                        motions[idx] = motions[idx] - 0.2
+                    else:
+                        new_high = actual_high - 0.2
+                        motions[idx] = motions[idx] + 0.2
+
+                else:
+                    new_high = actual_high + motions[idx]
+                    motions[idx] = 0             
+
+
+                self.movepart(foot, degrees(acos((303.25 - pow(new_high,2)) / 297)))
+                self.movepart(leg, 90 + degrees(acos((pow(new_high,2) - 61.5) / (22*new_high))))
+
+
+            sleep(0.002)
 
 
 
@@ -619,97 +639,63 @@ if __name__ == '__main__':
 #        lfoot = spot.calcnewpos(BACK_LEFT_FOOT, 2)
         spot.movepart(BACK_RIGHT_FOOT, 47)
         spot.movepart(BACK_LEFT_FOOT, 47)
-        spot.movepart(BACK_LEFT_LEG, 170)
-        spot.movepart(BACK_RIGHT_LEG, 170)
+        spot.movepart(BACK_LEFT_LEG, 169)
+        spot.movepart(BACK_RIGHT_LEG, 169)
 
         spot.movepart(FRONT_RIGHT_FOOT, 47)
         spot.movepart(FRONT_LEFT_FOOT, 47)
-        spot.movepart(FRONT_LEFT_LEG, 170)
-        spot.movepart(FRONT_RIGHT_LEG, 170)
+        spot.movepart(FRONT_LEFT_LEG, 169)
+        spot.movepart(FRONT_RIGHT_LEG, 169)
 
-        sleep(10)
-
-
-        spot.movepart(BACK_RIGHT_FOOT, 75)
-        spot.movepart(BACK_LEFT_FOOT, 75)
-        spot.movepart(BACK_LEFT_LEG, 150)
-        spot.movepart(BACK_RIGHT_LEG, 150)
-
-        spot.movepart(FRONT_RIGHT_FOOT, 75)
-        spot.movepart(FRONT_LEFT_FOOT, 75)
-        spot.movepart(FRONT_LEFT_LEG, 150)
-        spot.movepart(FRONT_RIGHT_LEG, 150)
-
-        sleep(10)
+        sleep(3)
 
 
-        spot.movepart(BACK_RIGHT_FOOT, 109)
-        spot.movepart(BACK_LEFT_FOOT, 109)
-        spot.movepart(BACK_LEFT_LEG, 129)
-        spot.movepart(BACK_RIGHT_LEG, 129)
+#        for j in range(5):
+#            for i in range(70):
+#                spot.moveleg(FRONT_RIGHT, 0.2)
+#                spot.moveleg(FRONT_LEFT, 0.2)
+#                spot.moveleg(BACK_RIGHT, 0.2)
+#                spot.moveleg(BACK_LEFT, 0.2)
+#                sleep(0.002)
+#            for i in range(70):
+#                spot.moveleg(FRONT_RIGHT, -0.2)
+#                spot.moveleg(FRONT_LEFT, -0.2)
+#                spot.moveleg(BACK_RIGHT, -0.2)
+#                spot.moveleg(BACK_LEFT, -0.2)
+#                sleep(0.002)
 
-        spot.movepart(FRONT_RIGHT_FOOT, 109)
-        spot.movepart(FRONT_LEFT_FOOT, 109)
-        spot.movepart(FRONT_LEFT_LEG, 129)
-        spot.movepart(FRONT_RIGHT_LEG, 129)
+
+        # This works well
+        #
+        #  |
+        #  V
+        #for j in range(5):
+        #    spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [14, 14 , 14, 14])
+        #    spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [-14, -14 , -14, -14])
+
+
+        #sleep(5)
+
+        spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [5, 5 , 5, 5])
+
+        while True:
+            spot.stable()
+
+
 
 
 
         sleep(100000)
-        spot.movepart(BACK_RIGHT_FOOT, 133)
-        spot.movepart(BACK_LEFT_FOOT, 133)
-        spot.movepart(FRONT_RIGHT_FOOT, 133)
-        spot.movepart(FRONT_LEFT_FOOT, 133)
-        spot.movepart(FRONT_LEFT_LEG, 169)
-        spot.movepart(FRONT_RIGHT_LEG, 169)
-        spot.movepart(BACK_LEFT_LEG, 169)
-        spot.movepart(BACK_RIGHT_LEG, 169)
-
-        sleep(100)
-
-
-        # Test al-kashi
-        spot.movepart(BACK_RIGHT_FOOT, 133)
-        spot.movepart(BACK_LEFT_FOOT, 133)
-        spot.movepart(BACK_LEFT_LEG, 130)
-        spot.movepart(BACK_RIGHT_LEG, 130)
-        spot.movepart(FRONT_RIGHT_FOOT, 133)
-        spot.movepart(FRONT_LEFT_FOOT, 133)
-        spot.movepart(FRONT_LEFT_LEG, 130)
-        spot.movepart(FRONT_RIGHT_LEG, 130)
- 
-        sleep(5)
-        spot.movepart(BACK_RIGHT_FOOT, 147)
-        spot.movepart(BACK_LEFT_FOOT, 147)
-        spot.movepart(BACK_LEFT_LEG, 124)
-        spot.movepart(BACK_RIGHT_LEG, 124)
-        spot.movepart(FRONT_RIGHT_FOOT, 147)
-        spot.movepart(FRONT_LEFT_FOOT, 147)
-        spot.movepart(FRONT_LEFT_LEG, 124)
-        spot.movepart(FRONT_RIGHT_LEG, 124)
- 
-        sleep(5)
-        spot.movepart(BACK_RIGHT_FOOT, 92)
-        spot.movepart(BACK_LEFT_FOOT, 92)
-        spot.movepart(BACK_LEFT_LEG, 144)
-        spot.movepart(BACK_RIGHT_LEG, 144)
-        spot.movepart(FRONT_RIGHT_FOOT, 92)
-        spot.movepart(FRONT_LEFT_FOOT, 92)
-        spot.movepart(FRONT_LEFT_LEG, 144)
-        spot.movepart(FRONT_RIGHT_LEG, 144)
 
 
 
 ############################## TODO
 #
-# Add an al-kashi calculation function
-# Create a function that move up/down a full leg of x cm (based on al-kashi calculation)
-# Servo motion asservissement
-# Stabilization use of the new function
+# Add an al-kashi calculation function -> OK
+# Create a function that move up/down a full leg of x cm (based on al-kashi calculation) -> OK
+# Servo motion asservissement -> OK
+# Stabilization use of the new function -> NOT OK
 
-
-
-        sleep(60)
 
 
     while all_run:
