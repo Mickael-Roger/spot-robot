@@ -210,6 +210,16 @@ def spotgamepad():
                         if keyevent.event.value == 0:
                             update_gamepadmotion('wakeup')
 
+                    # Move up
+                    if 'BTN_TR' in evdev.ecodes.bytype[keyevent.event.type][keyevent.event.code]:
+                        if keyevent.event.value == 0:
+                            update_gamepadmotion('moveup')
+
+                    # Move down
+                    if 'BTN_TL' in evdev.ecodes.bytype[keyevent.event.type][keyevent.event.code]:
+                        if keyevent.event.value == 0:
+                            update_gamepadmotion('movedown')
+
                     # Stabilisation
                     if 'BTN_B' in evdev.ecodes.bytype[keyevent.event.type][keyevent.event.code]:
                         if keyevent.event.value == 0:
@@ -248,6 +258,10 @@ class Spot():
         self.corrections = [3, 0, 3, 0, -7, -3, 4, 0, 5, 3, 7, 0, 0, 0, 0, 0]
         self.positions = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
 
+        self.desired_high = None
+        self.desired_front = 0
+        self.desired_side = 0
+
         self.servos = ServoKit(channels=16)
 
         for i in range(16):
@@ -260,15 +274,17 @@ class Spot():
         self.movepart(FRONT_RIGHT_SHOULDER, 85)
         self.movepart(BACK_LEFT_SHOULDER, 85)
 
-        self.movepart(FRONT_RIGHT_FOOT, 175)
-        self.movepart(FRONT_LEFT_FOOT, 175)
-        self.movepart(BACK_RIGHT_FOOT, 175)
-        self.movepart(BACK_LEFT_FOOT, 175)
+        self.movepart(BACK_RIGHT_FOOT, 47)
+        self.movepart(BACK_LEFT_FOOT, 47)
+        self.movepart(FRONT_RIGHT_FOOT, 47)
+        self.movepart(FRONT_LEFT_FOOT, 47)
+        
+        self.movepart(BACK_LEFT_LEG, 169)
+        self.movepart(BACK_RIGHT_LEG, 169)
+        self.movepart(FRONT_LEFT_LEG, 169)
+        self.movepart(FRONT_RIGHT_LEG, 169)
 
-        self.movepart(BACK_LEFT_LEG, 120)
-        self.movepart(FRONT_LEFT_LEG, 120)
-        self.movepart(BACK_RIGHT_LEG, 120)
-        self.movepart(FRONT_RIGHT_LEG, 120)
+
 
 
     def movepart(self, part, position):
@@ -282,8 +298,6 @@ class Spot():
             self.positions[part] = position
             self.servos.servo[part].angle = position + self.corrections[part]
         
-
-
         elif part == FRONT_RIGHT_FOOT or part == BACK_RIGHT_FOOT or part == FRONT_RIGHT_LEG or part == BACK_RIGHT_LEG or part == FRONT_RIGHT_SHOULDER or part == BACK_LEFT_SHOULDER:
             self.positions[part] = position 
             self.servos.servo[part].angle = 180 - (position + self.corrections[part])
@@ -293,47 +307,12 @@ class Spot():
 
         global spot_gamepadmotion
 
-        self.movepart(FRONT_LEFT_SHOULDER, 87)
-        self.movepart(BACK_RIGHT_SHOULDER, 87)
-        self.movepart(FRONT_RIGHT_SHOULDER, 87)
-        self.movepart(BACK_LEFT_SHOULDER, 87)
+        self.desired_high = 15
 
-        self.movepart(BACK_RIGHT_FOOT, 180)
-        self.movepart(BACK_LEFT_FOOT, 180)
-        self.movepart(FRONT_RIGHT_FOOT, 180)
-        self.movepart(FRONT_LEFT_FOOT, 180)
+        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [15 - spot.leghigh(FRONT_RIGHT), 15 - spot.leghigh(FRONT_LEFT) , 15 - spot.leghigh(BACK_RIGHT), 15 - spot.leghigh(BACK_LEFT)])
 
-        val = list(self.positions)
-
-        sleep(0.1)
-
-
-        for i in range(10):
-            self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG]-round((val[BACK_RIGHT_LEG] - 150)/15))
-            self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG]-round((val[BACK_LEFT_LEG] - 150)/15))
-            self.movepart(BACK_RIGHT_FOOT, self.positions[FRONT_RIGHT_LEG]-round((val[FRONT_RIGHT_LEG] - 150)/15))
-            self.movepart(BACK_LEFT_FOOT, self.positions[FRONT_LEFT_LEG]-round((val[FRONT_LEFT_LEG] - 150)/15))
-
-            sleep(0.05)
-
-        sleep(0.5)
-
-        val = list(self.positions)
-
-        for i in range(5):
-            self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT]-round((val[FRONT_RIGHT_FOOT] - 140)/5))
-            self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT]-round((val[FRONT_LEFT_FOOT] - 140)/5))
-            self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG]-round((val[FRONT_RIGHT_LEG] - 140)/5))
-            self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG]-round((val[FRONT_LEFT_LEG] - 140)/5))
-
-            self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG]-round((val[BACK_RIGHT_LEG] - 150)/5))
-            self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG]-round((val[BACK_LEFT_LEG] - 150)/5))
-            self.movepart(BACK_RIGHT_FOOT, self.positions[FRONT_RIGHT_LEG]-round((val[BACK_RIGHT_FOOT] - 140)/5))
-            self.movepart(BACK_LEFT_FOOT, self.positions[FRONT_LEFT_LEG]-round((val[BACK_LEFT_FOOT] - 140)/5))
-
-            sleep(0.05)
-
-        print(self.positions)
+        self.desired_front = 0
+        self.desired_side = 0
 
         spot_gamepadmotionlock.acquire()
         spot_gamepadmotion='stop'
@@ -344,34 +323,11 @@ class Spot():
 
         global spot_gamepadmotion
         
-        val = list(self.positions)
+        self.desired_high = 5
+        self.desired_front = 0
+        self.desired_side = 0
 
-        self.movepart(FRONT_LEFT_SHOULDER, 90)
-        self.movepart(BACK_RIGHT_SHOULDER, 90)
-        self.movepart(FRONT_RIGHT_SHOULDER, 90)
-        self.movepart(BACK_LEFT_SHOULDER, 90)
-
-        sleep(0.1)
-
-
-        for i in range(10):
-
-            self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG]-round((val[FRONT_RIGHT_LEG] - 120)/10))
-            self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG]-round((val[FRONT_LEFT_LEG] - 120)/10))
-            self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG]-round((val[BACK_RIGHT_LEG] - 120)/10))
-            self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG]-round((val[BACK_LEFT_LEG] - 120)/10))
-
-            self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT]-round((val[BACK_RIGHT_FOOT] - 175)/10))
-            self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT]-round((val[BACK_LEFT_FOOT] - 175)/10))
-            self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT]-round((val[FRONT_RIGHT_FOOT] - 175)/10))
-            self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT]-round((val[FRONT_LEFT_FOOT] - 175)/10))
-
-            sleep(0.05)
-
-        spot_gamepadmotionlock.acquire()
-        spot_gamepadmotion=None
-        spot_gamepadmotionlock.release()           
-
+        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [5 - spot.leghigh(FRONT_RIGHT), 5 - spot.leghigh(FRONT_LEFT) , 5 - spot.leghigh(BACK_RIGHT), 5 - spot.leghigh(BACK_LEFT)])
 
 
     def stop(self):
@@ -379,27 +335,7 @@ class Spot():
 
     def forward(self):
 
-        val = list(self.positions)
-
-        sleep(0.1)
-
-
-        for i in range(10):
-            self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG]-round((val[BACK_RIGHT_LEG] - 160)/10))
-            self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG]-round((val[BACK_LEFT_LEG] - 160)/10))
-            self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG]-round((val[FRONT_RIGHT_LEG] - 160)/10))
-            self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG]-round((val[FRONT_LEFT_LEG] - 160)/10))
-
-            self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT]-round((val[FRONT_RIGHT_FOOT] - 150)/10))
-            self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT]-round((val[FRONT_LEFT_FOOT] - 150)/10))
-            self.movepart(BACK_RIGHT_FOOT, self.positions[FRONT_RIGHT_LEG]-round((val[FRONT_RIGHT_LEG] - 150)/10))
-            self.movepart(BACK_LEFT_FOOT, self.positions[FRONT_LEFT_LEG]-round((val[FRONT_LEFT_LEG] - 150)/10))
-
-            sleep(0.05)
-
-        sleep(5)
-        self.movepart(BACK_RIGHT_LEG, 160)
-        self.movepart(BACK_RIGHT_FOOT, 180)
+        print("forward")
 
 
 
@@ -408,69 +344,11 @@ class Spot():
 
 
     def right(self):
-
-        self.movepart(FRONT_RIGHT_SHOULDER, 70)
-        self.movepart(FRONT_LEFT_SHOULDER, 110)
-        self.movepart(BACK_RIGHT_SHOULDER, 110)
-        self.movepart(BACK_LEFT_SHOULDER, 70)
-
-        sleep(0.3)
-
-        self.movepart(BACK_LEFT_FOOT, 170)
-        sleep(0.1)
-        self.movepart(BACK_LEFT_SHOULDER, 120)
-
-        sleep(0.3)
-
-        self.movepart(BACK_LEFT_FOOT, 140)
-        self.movepart(BACK_RIGHT_FOOT, 180)
-        sleep(0.05)
-        self.movepart(BACK_RIGHT_SHOULDER, 60)
-        sleep(0.1)
-        self.movepart(BACK_LEFT_FOOT, 170)
-        self.movepart(BACK_RIGHT_FOOT, 170)
-
-        sleep(0.3)
-
-        self.movepart(FRONT_RIGHT_SHOULDER, 90)
-        self.movepart(BACK_LEFT_SHOULDER, 90)
-        self.movepart(BACK_RIGHT_SHOULDER, 90)
-        self.movepart(FRONT_LEFT_SHOULDER, 90)
-
-        sleep(0.2)
+        print("right")
 
 
     def left(self):
-
-        self.movepart(FRONT_RIGHT_SHOULDER, 110)
-        self.movepart(FRONT_LEFT_SHOULDER, 70)
-        self.movepart(BACK_RIGHT_SHOULDER, 70)
-        self.movepart(BACK_LEFT_SHOULDER, 110)
-
-        sleep(0.3)
-
-        self.movepart(BACK_RIGHT_FOOT, 170)
-        sleep(0.1)
-        self.movepart(BACK_RIGHT_SHOULDER, 120)
-
-        sleep(0.3)
-
-        self.movepart(BACK_RIGHT_FOOT, 140)
-        self.movepart(BACK_LEFT_FOOT, 180)
-        sleep(0.05)
-        self.movepart(BACK_LEFT_SHOULDER, 60)
-        sleep(0.1)
-        self.movepart(BACK_LEFT_FOOT, 170)
-        self.movepart(BACK_RIGHT_FOOT, 170)
-
-        sleep(0.3)
-
-        self.movepart(FRONT_RIGHT_SHOULDER, 90)
-        self.movepart(BACK_LEFT_SHOULDER, 90)
-        self.movepart(BACK_RIGHT_SHOULDER, 90)
-        self.movepart(FRONT_LEFT_SHOULDER, 90)
-
-        sleep(0.2)
+        print("left")
 
 
     def bodyleft(self):
@@ -480,12 +358,22 @@ class Spot():
         print('Body Right')
 
     def bodyfront(self):
-        print('Body Front')
+        self.desired_front = self.desired_front + 1
+        self.gyroposition(front_pos=self.desired_front, side_pos=self.desired_side)
+        print('Body Front' + str(self.desired_front))
 
     def bodyback(self):
-        print('Body Back')
+        self.desired_front = self.desired_front - 1
+        self.gyroposition(front_pos=self.desired_front, side_pos=self.desired_side)
+        print('Body Back' + str(self.desired_front))
+
+    def bodyupdown(self, move):
+        self.desired_high = self.desired_high + move
+        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [self.desired_high - spot.leghigh(FRONT_RIGHT), self.desired_high - spot.leghigh(FRONT_LEFT) , self.desired_high - spot.leghigh(BACK_RIGHT), self.desired_high - spot.leghigh(BACK_LEFT)])
 
 
+    # To improve
+    #   Better movement identication (do not only used 0.1 or 0.2), do not sleep at the end, ...
     def gyroposition(self, front_pos=0, side_pos=0):
         global gyro_front, gyro_time, gyro_side, gyro_lock
 
@@ -500,51 +388,103 @@ class Spot():
 
             if (time() - gytime) < 0.1:
                 if abs(front - front_pos) > 1 or abs(side - side_pos) > 1:
+
+                    frontleft=self.leghigh(FRONT_LEFT)
+                    frontright=self.leghigh(FRONT_RIGHT)
+                    backleft=self.leghigh(BACK_LEFT)
+                    backright=self.leghigh(BACK_RIGHT)
+
+                    frontlen = max([frontleft, frontright])
+                    backlen = max([backleft, backright])
+                    rightlen = max([backright, frontright])
+                    leftlen = max([frontleft, backleft])
+
                     if front < (front_pos - 1):
-                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [0.2, 0.2 , 0.2, 0.2])
-                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 1)
-                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 1)
-                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 1)
-                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 1)
+                        
+                        if (abs(frontlen - self.desired_high) > abs(backlen - self.desired_high)) or backlen > self.desired_high:
+                            if backlen > (self.desired_high + 0.5):
+                                self.moveleg([BACK_RIGHT, BACK_LEFT] , [-0.1, -0.1])
+                                self.moveleg([FRONT_RIGHT, FRONT_LEFT] , [-0.2, -0.2])
+                            else:
+                                self.moveleg([FRONT_RIGHT, FRONT_LEFT] , [-0.1, -0.1])
+                        else:
+                            if frontlen > (self.desired_high + 0.5):
+                                self.moveleg([FRONT_RIGHT, FRONT_LEFT] , [-0.1, -0.1])
+                            
+                            self.moveleg([BACK_RIGHT, BACK_LEFT] , [0.1, 0.1])
+
 
                     if front > (front_pos + 1):
-                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [-0.2, -0.2 , -0.2, -0.2])
-                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 1)
-                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 1)
-                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 1)
-                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 1)
+                        
+                        if (abs(frontlen - self.desired_high) < abs(backlen - self.desired_high)) or frontlen < self.desired_high:
+                            if backlen > (self.desired_high + 0.5):
+                                self.moveleg([BACK_RIGHT, BACK_LEFT] , [-0.1, -0.1])
+
+                            self.moveleg([FRONT_RIGHT, FRONT_LEFT] , [0.1, 0.1])
+                        else:
+                            if frontlen > (self.desired_high + 0.5):
+                                self.moveleg([FRONT_RIGHT, FRONT_LEFT] , [-0.1, -0.1])
+                                self.moveleg([BACK_RIGHT, BACK_LEFT] , [-0.2, -0.2])
+                            else:
+                                self.moveleg([BACK_RIGHT, BACK_LEFT] , [-0.1, -0.1])
+
 
                     if side > (side_pos + 1):
-                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [0.2, 0.2 , -0.2, -0.2])
-                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] + 0.5)
-                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] + 0.5)
-                        #self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] + 0.5)
-                        #self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] + 0.5)
 
-                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] - 0.5)
-                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] - 0.5)
-                        #self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] - 0.5)
-                        #self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] - 0.5)
+                        if (abs(leftlen - self.desired_high) > abs(rightlen - self.desired_high)) or rightlen > self.desired_high:
+                            if rightlen > (self.desired_high + 0.5):
+                                self.moveleg([FRONT_RIGHT, BACK_RIGHT] , [-0.1, -0.1])
+
+                            self.moveleg([FRONT_LEFT, BACK_LEFT] , [0.1, 0.1])
+                        else:
+                            
+                            if leftlen > (self.desired_high + 0.5):
+                                self.moveleg([FRONT_LEFT, BACK_LEFT] , [-0.1, -0.1])
+                                self.moveleg([FRONT_RIGHT, BACK_RIGHT] , [-0.2, -0.2])
+                            else:
+                                self.moveleg([FRONT_RIGHT, BACK_RIGHT] , [-0.1, -0.1])
+
+
 
                     if side < (side_pos - 1):
-                        self.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [-0.2, -0.2 , 0.2, 0.2])
-                        #self.movepart(FRONT_RIGHT_FOOT, self.positions[FRONT_RIGHT_FOOT] - 0.5)
-                        #self.movepart(FRONT_RIGHT_LEG, self.positions[FRONT_RIGHT_LEG] - 0.5)
-                        #self.movepart(BACK_RIGHT_FOOT, self.positions[BACK_RIGHT_FOOT] - 0.5)
-                        #self.movepart(BACK_RIGHT_LEG, self.positions[BACK_RIGHT_LEG] - 0.5)
 
-                        #self.movepart(FRONT_LEFT_FOOT, self.positions[FRONT_LEFT_FOOT] + 0.5)
-                        #self.movepart(FRONT_LEFT_LEG, self.positions[FRONT_LEFT_LEG] + 0.5)
-                        #self.movepart(BACK_LEFT_FOOT, self.positions[BACK_LEFT_FOOT] + 0.5)
-                        #self.movepart(BACK_LEFT_LEG, self.positions[BACK_LEFT_LEG] + 0.5)
+                        if (abs(leftlen - self.desired_high) < abs(rightlen - self.desired_high)) or leftlen > self.desired_high:
+                            if leftlen > (self.desired_high + 0.5):
+                                self.moveleg([FRONT_LEFT, BACK_LEFT] , [-0.1, -0.1])
+
+                            self.moveleg([FRONT_RIGHT, BACK_RIGHT] , [0.1, 0.1])
+                        else:
+                            if rightlen > (self.desired_high + 0.5):
+                                self.moveleg([FRONT_LEFT, BACK_LEFT] , [-0.2, -0.2])
+                                self.moveleg([FRONT_RIGHT, BACK_RIGHT] , [-0.1, -0.1])
+                            else:
+                                self.moveleg([FRONT_LEFT, BACK_LEFT] , [-0.1, -0.1])
+
 
                 else:
                     break
 
-                sleep(0.05)
+                sleep(0.01)
+
+    def leghigh(self, leg):
+        if leg == FRONT_LEFT:
+            foot = FRONT_LEFT_FOOT
+            leg = FRONT_LEFT_LEG
+        elif leg == FRONT_RIGHT:
+            foot = FRONT_RIGHT_FOOT
+            leg = FRONT_RIGHT_LEG
+        elif leg == BACK_LEFT:
+            foot = BACK_LEFT_FOOT
+            leg = BACK_LEFT_LEG
+        elif leg == BACK_RIGHT:
+            foot = BACK_RIGHT_FOOT
+            leg = BACK_RIGHT_LEG
+
+        return sqrt(303.25 - (2 * 148.5 * cos(radians(self.positions[foot]))))
 
 
-
+    # To improve
+    #   Catch errors, ...
     def moveleg(self, legs=[], motions=[]):
 
         while all( v != 0 for v in motions):
@@ -564,7 +504,7 @@ class Spot():
                     foot = BACK_RIGHT_FOOT
                     leg = BACK_RIGHT_LEG
 
-                actual_high = sqrt(303.25 - (2 * 148.5 * cos(radians(self.positions[foot]))))
+                actual_high = self.leghigh(oneleg)
 
                 if abs(motions[idx]) > 0.2:
 
@@ -584,7 +524,7 @@ class Spot():
                 self.movepart(leg, 90 + degrees(acos((pow(new_high,2) - 61.5) / (22*new_high))))
 
 
-            sleep(0.002)
+            sleep(0.0005)
 
 
 
@@ -623,79 +563,39 @@ if __name__ == '__main__':
         debug_thread.setDaemon(True)
         debug_thread.start()
 
-#        sleep(5)
-#
-#        spot.wakeup()
-#
-#        sleep(5)
 
-#        print("toto")
-#        lleg = spot.calcnewpos(BACK_LEFT_LEG, 2)
-#        print("toto1")
-#        rleg = spot.calcnewpos(BACK_RIGHT_LEG, 2)
-#        print("toto2")
-#        rfoot = spot.calcnewpos(BACK_RIGHT_FOOT, 2)
-#        print("toto3")
-#        lfoot = spot.calcnewpos(BACK_LEFT_FOOT, 2)
-        spot.movepart(BACK_RIGHT_FOOT, 47)
-        spot.movepart(BACK_LEFT_FOOT, 47)
-        spot.movepart(BACK_LEFT_LEG, 169)
-        spot.movepart(BACK_RIGHT_LEG, 169)
 
-        spot.movepart(FRONT_RIGHT_FOOT, 47)
-        spot.movepart(FRONT_LEFT_FOOT, 47)
-        spot.movepart(FRONT_LEFT_LEG, 169)
-        spot.movepart(FRONT_RIGHT_LEG, 169)
+        spot.laydown()
+        sleep(5)
 
+        spot.wakeup()
         sleep(3)
 
+        spot.laydown()
+        sleep(5)
 
-#        for j in range(5):
-#            for i in range(70):
-#                spot.moveleg(FRONT_RIGHT, 0.2)
-#                spot.moveleg(FRONT_LEFT, 0.2)
-#                spot.moveleg(BACK_RIGHT, 0.2)
-#                spot.moveleg(BACK_LEFT, 0.2)
-#                sleep(0.002)
-#            for i in range(70):
-#                spot.moveleg(FRONT_RIGHT, -0.2)
-#                spot.moveleg(FRONT_LEFT, -0.2)
-#                spot.moveleg(BACK_RIGHT, -0.2)
-#                spot.moveleg(BACK_LEFT, -0.2)
-#                sleep(0.002)
+        spot.wakeup()
+        sleep(5)
 
+        spot.laydown()
+        sleep(1)
 
-        # This works well
-        #
-        #  |
-        #  V
-        #for j in range(5):
-        #    spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [14, 14 , 14, 14])
-        #    spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [-14, -14 , -14, -14])
+        for j in range(2):
+            spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [20 - spot.leghigh(FRONT_RIGHT), 20 - spot.leghigh(FRONT_LEFT) , 20 - spot.leghigh(BACK_RIGHT), 20 - spot.leghigh(BACK_LEFT)])
+            spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [5 - spot.leghigh(FRONT_RIGHT), 5 - spot.leghigh(FRONT_LEFT) , 5 - spot.leghigh(BACK_RIGHT), 5 - spot.leghigh(BACK_LEFT)])
 
+        sleep(5)
 
-        #sleep(5)
+        spot.desired_high = 15
+        spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [15 - spot.leghigh(FRONT_RIGHT), 15 - spot.leghigh(FRONT_LEFT) , 15 - spot.leghigh(BACK_RIGHT), 15 - spot.leghigh(BACK_LEFT)])
+        sleep(3)
 
-        spot.moveleg([FRONT_RIGHT, FRONT_LEFT, BACK_RIGHT, BACK_LEFT] , [5, 5 , 5, 5])
-
-        while True:
-            spot.stable()
-
-
-
+        #while True:
+            #spot.stable()
+        #    spot.gyroposition(front_pos=-15, side_pos=0)
 
 
         sleep(100000)
-
-
-
-############################## TODO
-#
-# Add an al-kashi calculation function -> OK
-# Create a function that move up/down a full leg of x cm (based on al-kashi calculation) -> OK
-# Servo motion asservissement -> OK
-# Stabilization use of the new function -> NOT OK
-
 
 
     while all_run:
@@ -703,34 +603,52 @@ if __name__ == '__main__':
         spot_gamepadmotionlock.acquire()
         action=spot_gamepadmotion
         spot_gamepadmotionlock.release()
+
         gyro_lock.acquire()
         print("Front : " + str(gyro_front) + " - " + "Side : " + str(gyro_side))
         if gyro_lock.locked():
             gyro_lock.release()
+
         if action == 'stop':
             spot.stop()
         elif action == 'stable':
             spot.stable()
         elif action == 'forward':
             spot.forward()
+            update_gamepadmotion('stop')
         elif action == 'backward':
             spot.backward()
+            update_gamepadmotion('stop')
         elif action == 'left':
             spot.left()
+            update_gamepadmotion('stop')
         elif action == 'right':
             spot.right()
+            update_gamepadmotion('stop')
         elif action == 'bodyright':
             spot.bodyright()
+            update_gamepadmotion('stop')
         elif action == 'bodyleft':
             spot.bodyleft()
+            update_gamepadmotion('stop')
         elif action == 'bodyfront':
             spot.bodyfront()
+            update_gamepadmotion('stop')
         elif action == 'bodyback':
             spot.bodyback()
+            update_gamepadmotion('stop')
         elif action == 'wakeup':
             spot.wakeup()
+            update_gamepadmotion('stop')
         elif action == 'laydown':
             spot.laydown()
+            update_gamepadmotion('stop')
+        elif action == 'moveup':
+            spot.bodyupdown(1)
+            update_gamepadmotion('stop')
+        elif action == 'movedown':
+            spot.bodyupdown(-1)
+            update_gamepadmotion('stop')
         
 
 
